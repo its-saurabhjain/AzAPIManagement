@@ -1,0 +1,71 @@
+<policies>
+    <inbound>
+        <base />
+        <cors allow-credentials="true">
+            <allowed-origins>
+                <origin>http://myschools.azure-api.net</origin>
+            </allowed-origins>
+            <allowed-methods>
+                <method>GET</method>
+            </allowed-methods>
+            <allowed-headers>
+                <header>content-type</header>
+                <header>accept</header>
+            </allowed-headers>
+            <expose-headers>
+                <header>*</header>
+            </expose-headers>
+        </cors>
+        <set-variable name="accountId" value="@(context.Request.Url.Query["accountId"].Last())" />
+        <set-variable name="token" value="@(context.Request.Headers.GetValueOrDefault("Authorization","scheme param"))" />
+        <send-request mode="new" response-variable-name="profiledetails" timeout="20" ignore-error="true">
+            <set-url>@($"http://myschools.azure-api.net/api/profile?accountId={(string)context.Variables["accountId"]}")</set-url>
+            <set-method>GET</set-method>
+            <set-header name="Content-Type" exists-action="override">
+                <value>application/x-www-form-urlencoded</value>
+            </set-header>
+            <set-header name="Authorization" exists-action="override">
+                <value>@($"{(string)context.Variables["token"]}")</value>
+            </set-header>
+            <set-header name="Ocp-Apim-Subscription-Key" exists-action="override">
+                <value>f0cdce3b3b2e49cdac7a6f9fcfda8add</value>
+            </set-header>
+        </send-request>
+        <send-request mode="new" response-variable-name="taskdetails" timeout="20" ignore-error="true">
+            <set-url>@($"http://myschools.azure-api.net/Task?accountId={(string)context.Variables["accountId"]}")</set-url>
+            <set-method>GET</set-method>
+            <set-header name="Content-Type" exists-action="override">
+                <value>application/x-www-form-urlencoded</value>
+            </set-header>
+            <set-header name="Authorization" exists-action="override">
+                <value>@($"{(string)context.Variables["token"]}")</value>
+            </set-header>
+            <set-header name="Ocp-Apim-Subscription-Key" exists-action="override">
+                <value>f0cdce3b3b2e49cdac7a6f9fcfda8add</value>
+            </set-header>
+        </send-request>
+        <return-response>
+            <set-status code="200" reason="OK" />
+            <set-header name="Content-Type" exists-action="override">
+                <value>application/json</value>
+            </set-header>
+            <set-body>@(new JObject(new JProperty("profiledetails",((IResponse)context.Variables["profiledetails"]).Body.As<JObject>()),  
+                            new JProperty("taskdetails",((IResponse)context.Variables["taskdetails"]).Body.As<JObject>())  
+                            ).ToString())</set-body>
+        </return-response>
+        <cache-lookup vary-by-developer="false" vary-by-developer-groups="false" allow-private-response-caching="true" downstream-caching-type="none">
+            <vary-by-header>Accept</vary-by-header>
+            <vary-by-header>Accept-Charset</vary-by-header>
+        </cache-lookup>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+        <cache-store duration="3600" />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
